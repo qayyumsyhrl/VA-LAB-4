@@ -1,5 +1,8 @@
 # Lab 4: Active Footprinting Report (`vulnbank.org`)
 
+**Name:** MUHAMMAD QAYYUM BIN MOHD SYAHRIL  
+**Student ID:** 52215226074
+
 ## Scope & Ethical Boundaries
 This lab documents safe, non-intrusive active footprinting against `https://vulnbank.org/`, an intentionally vulnerable training web application. No exploitation, attacks, brute-forcing, credential abuse, or destructive testing were performed.
 
