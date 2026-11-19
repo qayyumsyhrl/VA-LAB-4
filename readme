@@ -1,88 +1,85 @@
 # Lab 4: Active Footprinting Report (`vulnbank.org`)
 
 ## Scope & Ethical Boundaries
-This activity focused strictly on safe, non-intrusive active footprinting against `https://vulnbank.org/`, an intentionally vulnerable training web application[cite: 1, 2]. No exploitation, vulnerability attacks, brute-forcing, credential abuse, or destructive testing were performed[cite: 2].
+This lab documents safe, non-intrusive active footprinting against `https://vulnbank.org/`, an intentionally vulnerable training web application. No exploitation, attacks, brute-forcing, credential abuse, or destructive testing were performed.
 
 ---
 
 ## 1. Own Host Setup (Reconnaissance Machine)
-Active reconnaissance was performed from a Kali Linux virtual machine running in Oracle VirtualBox[cite: 1, 2].
+Active footprinting was run from a Kali Linux virtual machine in Oracle VirtualBox.
 
-| Component | Configuration |
-| :--- | :--- |
-| **Operating System** | Kali Linux (`kali-linux-2026.3-virtualbox-amd64`)[cite: 1] |
-| **Hostname / User** | `koi` (`kali@koi`)[cite: 1, 2] |
-| **Hypervisor** | Oracle VirtualBox[cite: 1] |
-| **Network Mode** | Bridged Adapter (`Realtek PCIe GbE Family Controller`)[cite: 1] |
-| **Interface & IPv4** | `eth0` (`UP`), `192.168.100.131/24` (subnet `192.168.100.0/24`)[cite: 1] |
-| **Default Gateway** | `192.168.100.254` via `eth0`[cite: 1] |
-| **Tools Used** | `ip`, `host`, `nslookup`, `ping`, `nmap`, `curl`, Firefox[cite: 2, 3, 4, 6, 7] |
+* **Operating System:** Kali Linux (`kali-linux-2026.3-virtualbox-amd64`)
+* **User & Hostname:** `kali@koi`
+* **Virtualization:** Oracle VirtualBox
+* **Network Adapter:** Bridged Adapter (`Realtek PCIe GbE Family Controller`)
+* **Network Interface:** `eth0` (`UP`), IPv4 `192.168.100.131/24` (subnet `192.168.100.0/24`)
+* **Default Gateway:** `192.168.100.254` via `eth0`
+* **Tools Used:** `ip`, `host`, `nslookup`, `ping`, `nmap`, `curl`, Firefox
 
 ### Evidence
-![VirtualBox Bridged Network and Kali IP/Route Output](screenshots/part1-vbox-network-and-ip.png)[cite: 1]
+![VirtualBox Bridged Network and Kali IP/Route](screenshots/part1-vbox-network.png)
 
 ---
 
 ## 2. Target Setup & Initial Discovery
-The reconnaissance target was the hosted training web application at `https://vulnbank.org/`[cite: 1, 2].
+The reconnaissance target was `https://vulnbank.org/`.
 
-| Component | Configuration / Observation |
-| :--- | :--- |
-| **Target URL / Host** | `https://vulnbank.org/` (`vulnbank.org`) |
-| **Resolved IPv4** | `172.67.134.11`, `104.21.5.243`[cite: 2] |
-| **Resolved IPv6** | `2606:4700:3035::ac43:860b`, `2606:4700:3034::6815:5f3`[cite: 2] |
-| **DNS Service Binding** | `HTTPS` record advertising `alpn="h3,h2"`[cite: 2] |
-| **ICMP Reachability** | `ping -c 3 vulnbank.org` -> 3 received, 0% packet loss (~20.1–25.8 ms RTT)[cite: 2] |
-| **Web Ports Scanned** | `80/tcp` (`open`, `http`, `Cloudflare http proxy`), `443/tcp` (`open`, `ssl/http`, `Cloudflare http proxy`)[cite: 3] |
+* **Target URL:** `https://vulnbank.org/`
+* **Resolved IPv4:** `172.67.134.11` and `104.21.5.243`
+* **Resolved IPv6:** `2606:4700:3035::ac43:860b` and `2606:4700:3034::6815:5f3`
+* **DNS HTTPS Binding:** Advertised `alpn="h3,h2"`
+* **ICMP Reachability:** `ping -c 3 vulnbank.org` returned 3 replies, 0% packet loss (~20.1–25.8 ms RTT)
+* **Web Ports (`80`, `443`):** Both `80/tcp` (`http`) and `443/tcp` (`ssl/http`) showed `open` with `Cloudflare http proxy`
 
 ### Evidence
-![DNS Lookup and ICMP Ping Results for vulnbank.org](screenshots/part2-dns-ping.png)[cite: 2]
+![DNS Lookup and Ping Results](screenshots/part2-dns-ping.png)
 
-![Nmap Service Scan on Ports 80 and 443](screenshots/part2-nmap-80-443.png)[cite: 3]
+![Nmap Scan on Ports 80 and 443](screenshots/part2-nmap-ports.png)
 
-![Baseline Browser View of vulnbank.org](screenshots/part2-browser-baseline.png)
+![Baseline Browser View of VulnBank](screenshots/part2-browser-baseline.png)
 
 ---
 
 ## 3. Findings & Evidence
 
 ### 3.1 HTTP Response Headers (`curl -I`)
-A read-only header request to `https://vulnbank.org/` returned `HTTP/2 200` on `Thu, 19 Nov 2026 14:01:30 GMT` with `content-type: text/html; charset=utf-8`, `server: cloudflare`, `cf-cache-status: DYNAMIC`, `cf-ray: a5cfbf486c042af5-SIN` (Singapore edge), `alt-svc: h3=":443"; ma=86400`, and `access-control-allow-origin: *`[cite: 6].
+Running `curl -I https://vulnbank.org/` returned `HTTP/2 200` on `Thu, 19 Nov 2026 14:01:30 GMT` with:
+* `server: cloudflare`
+* `cf-cache-status: DYNAMIC`
+* `cf-ray: a5cfbf486c042af5-SIN` (Singapore edge)
+* `alt-svc: h3=":443"; ma=86400`
+* `access-control-allow-origin: *`
 
-![HTTP Response Headers for vulnbank.org](screenshots/part3-curl-headers.png)[cite: 6]
+![HTTP Response Headers](screenshots/part3-curl-headers.png)
 
-### 3.2 TLS Handshake & Certificate Inspection (`curl -vI`)
-A verbose HTTPS connection check confirmed a `TLSv1.3` handshake (`TLS_AES_256_GCM_SHA384` with `X25519MLKEM768`) negotiating HTTP/2 (`h2`) for certificate subject `CN=vulnbank.org` (valid from `Oct 20 23:36:02 2026 GMT`), while an initial IPv6 attempt reported `Network is unreachable` before connecting over IPv4 (`104.21.5.243:443`)[cite: 7].
+### 3.2 TLS Handshake & Certificate (`curl -vI`)
+A verbose check showed a `TLSv1.3` connection (`TLS_AES_256_GCM_SHA384` / `X25519MLKEM768`) negotiating `h2` (`HTTP/2`) with certificate subject `CN=vulnbank.org` (valid from `Oct 20 23:36:02 2026 GMT`). An initial IPv6 attempt showed `Network is unreachable` before connecting over IPv4 (`104.21.5.243:443`).
 
-![Verbose TLS and HTTP/2 Handshake Output](screenshots/part3-curl-tls.png)[cite: 7]
+![TLS Handshake and Certificate Output](screenshots/part3-curl-tls.png)
 
 ### 3.3 Public Metadata (`robots.txt`)
-Fetching `https://vulnbank.org/robots.txt` returned policy comments describing content signals (`search`, `ai-input`, `ai-train`) and copyright signal notices[cite: 8].
+Fetching `https://vulnbank.org/robots.txt` returned policy comments covering content signals (`search`, `ai-input`, `ai-train`) and copyright signal notes.
 
-![vulnbank.org robots.txt Output](screenshots/part3-robots-txt.png)[cite: 8]
+![vulnbank.org robots.txt Output](screenshots/part3-robots.png)
 
 ---
 
 ## 4. Analysis, Limitations & Recommendations
 
 ### 4.1 What the Evidence Proves, Suggests, and Cannot Establish
-* **Proves:** At capture time, `vulnbank.org` resolved via DNS to the recorded IPv4/IPv6 addresses and `HTTPS` ALPN hints, responded to `ping -c 3` with 0% packet loss, exposed `80/tcp` and `443/tcp` as `open` with `Cloudflare http proxy` banners, returned `HTTP/2 200` on `19 Nov 2026 14:01:30 GMT`, completed a `TLSv1.3` (`h2`) handshake for `CN=vulnbank.org`, and served a readable `robots.txt` file[cite: 2, 3, 6, 7, 8].
-* **Suggests:** Traffic passes through Cloudflare reverse-proxy/CDN edge infrastructure (including Singapore routing `-SIN` and HTTP/3 advertisement), responses are generated dynamically (`cf-cache-status: DYNAMIC`), IPv6 routing from the VM was unavailable/unreachable in that test, and `access-control-allow-origin: *` indicates a wildcard cross-origin header on the observed response[cite: 2, 6, 7].
-* **Cannot Establish:** The true origin server IP address, internal network architecture, underlying OS/application versions behind Cloudflare, or any confirmed exploitable vulnerability[cite: 2, 3, 6, 7, 8].
+* **Proves:** At capture time, `vulnbank.org` resolved to those IPv4/IPv6 addresses and ALPN hints, answered `ping -c 3` with 0% loss, had ports `80` and `443` open with Cloudflare proxy banners, returned `HTTP/2 200` on `19 Nov 2026 14:01:30 GMT`, completed a `TLSv1.3` (`h2`) handshake for `CN=vulnbank.org`, and served `robots.txt`.
+* **Suggests:** Traffic goes through Cloudflare edge/reverse-proxy nodes (including `-SIN` and HTTP/3 hints), responses are generated dynamically (`DYNAMIC`), IPv6 from the VM was unreachable during that check, and `access-control-allow-origin: *` sets a wildcard cross-origin header.
+* **Cannot Establish:** The real origin server IP address, internal network layout, origin OS/framework versions, or any confirmed exploitable vulnerability.
 
 ### 4.2 Limitations
-* **Reverse Proxy / CDN Masking:** Cloudflare edge IPs and proxy banners conceal origin server identity and prevent direct origin banner or OS fingerprinting[cite: 2, 3, 6].
-* **Point-in-Time Snapshot:** DNS responses, edge nodes, latency, and live HTTP responses reflect conditions at the moment of testing and may vary across times or networks[cite: 2, 6, 7].
-* **Non-Intrusive Scope:** Limiting activity to safe footprinting on ports `80` and `443`—without brute-forcing, fuzzing, or exploitation—leaves unexamined paths and application internals untested[cite: 2, 3].
+* **Proxy / CDN Masking:** Cloudflare edge IPs and banners hide origin infrastructure and prevent direct origin banner or OS detection.
+* **Point-in-Time Snapshot:** DNS records, routing, latency, and web responses reflect only the moment tested.
+* **Safe Footprinting Scope:** Read-only checks on ports `80` and `443` without brute-forcing or exploitation do not test hidden paths or deeper application behavior.
 
 ### 4.3 Defensive Recommendations
-
-| Area / Observation | Recommended Defense |
-| :--- | :--- |
-| **Origin Exposure** | Restrict direct origin connections so traffic only enters through approved proxy/CDN IP ranges[cite: 3, 6]. |
-| **Cross-Origin & HTTP Headers** | Scope `access-control-allow-origin` and other response headers to intended origins and security requirements rather than broad wildcards[cite: 6]. |
-| **Transport & Protocol Hygiene** | Maintain current TLS/HTTP configurations and ensure IPv6/IPv4 dual-stack routing is intentionally configured and monitored[cite: 2, 7]. |
-| **Patch & Verification Discipline** | Keep underlying application and server software updated and validate security posture through authorized testing rather than relying on banners alone[cite: 3]. |
+* **Restrict Origin Access:** Allow direct connections to the origin only from approved proxy/CDN IP ranges.
+* **Tighten Headers & Surface:** Keep `access-control-allow-origin` and response headers scoped to what is actually needed, and minimize exposed services.
+* **Maintain Updates & Safe Validation:** Keep server/application software patched and validate security changes through authorized testing rather than relying on banners alone.
 
 ### 4.4 Conclusion
-This lab demonstrated how to conduct structured, safe active footprinting of `vulnbank.org` from Kali Linux (`koi`) while documenting verifiable evidence and distinguishing hard proof from inference[cite: 1, 2, 3, 6, 7, 8]. Recognizing reverse-proxy masking and non-intrusive testing boundaries helps keep reconnaissance accurate, ethical, and grounded in observable facts[cite: 2, 3, 6].
+This lab showed how to perform safe, structured active footprinting on `vulnbank.org` from Kali (`koi`), record factual evidence, and clearly separate proof from guesswork.
